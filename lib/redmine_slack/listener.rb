@@ -5,9 +5,10 @@ class SlackListener < Redmine::Hook::Listener
 		issue = context[:issue]
 
 		channel = channel_for_project issue.project
+		issue_channel = channel_for_issue issue
 		url = url_for_project issue.project
 
-		return unless channel and url
+		return unless (channel or issue_channel) and url
 		return if issue.is_private?
 
 		msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
@@ -34,7 +35,13 @@ class SlackListener < Redmine::Hook::Listener
 			:short => true
 		} if Setting.plugin_redmine_slack['display_watchers'] == 'yes'
 
-		speak msg, channel, attachment, url
+		# It's possible that the issue can report to a project-specific and issue-specific channel
+		if channel
+			speak msg, channel, attachment, url
+		end
+		if issue_channel
+			speak msg, issue_channel, attachment, url
+		end
 	end
 
 	def redmine_slack_issues_edit_after_save(context={})
@@ -42,9 +49,10 @@ class SlackListener < Redmine::Hook::Listener
 		journal = context[:journal]
 
 		channel = channel_for_project issue.project
+		issue_channel = channel_for_issue issue
 		url = url_for_project issue.project
 
-		return unless channel and url and Setting.plugin_redmine_slack['post_updates'] == '1'
+		return unless (channel or issue_channel) and url and Setting.plugin_redmine_slack['post_updates'] == '1'
 		return if issue.is_private?
 		return if journal.private_notes?
 
@@ -54,7 +62,13 @@ class SlackListener < Redmine::Hook::Listener
 		attachment[:text] = escape journal.notes if journal.notes
 		attachment[:fields] = journal.details.map { |d| detail_to_field d }
 
-		speak msg, channel, attachment, url
+		# It's possible that the issue can report to a project-specific and issue-specific channel
+		if channel
+			speak msg, channel, attachment, url
+		end
+		if issue_channel
+			speak msg, issue_channel, attachment, url
+		end
 	end
 
 	def model_changeset_scan_commit_for_issue_ids_pre_issue_update(context={})
@@ -63,9 +77,10 @@ class SlackListener < Redmine::Hook::Listener
 		changeset = context[:changeset]
 
 		channel = channel_for_project issue.project
+		issue_channel = channel_for_issue issue
 		url = url_for_project issue.project
 
-		return unless channel and url and issue.save
+		return unless (channel or issue_channel) and url and issue.save
 		return if issue.is_private?
 
 		msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>"
@@ -101,7 +116,13 @@ class SlackListener < Redmine::Hook::Listener
 		attachment[:text] = ll(Setting.default_language, :text_status_changed_by_changeset, "<#{revision_url}|#{escape changeset.comments}>")
 		attachment[:fields] = journal.details.map { |d| detail_to_field d }
 
-		speak msg, channel, attachment, url
+		# It's possible that the issue can report to a project-specific and issue-specific channel
+		if channel
+			speak msg, channel, attachment, url
+		end
+		if issue_channel
+			speak msg, issue_channel, attachment, url
+		end
 	end
 
 	def controller_wiki_edit_after_save(context = { })
@@ -204,6 +225,20 @@ private
 			(proj.custom_value_for(cf).value rescue nil),
 			(channel_for_project proj.parent),
 			Setting.plugin_redmine_slack['channel'],
+		].find{|v| v.present?}
+
+		# Channel name '-' is reserved for NOT notifying
+		return nil if val.to_s == '-'
+		val
+	end
+
+	def channel_for_issue(iss)
+		return nil if iss.blank?
+
+		cf = IssueCustomField.find_by_name("Slack Channel")
+
+		val = [
+			(iss.custom_value_for(cf).value rescue nil),
 		].find{|v| v.present?}
 
 		# Channel name '-' is reserved for NOT notifying
