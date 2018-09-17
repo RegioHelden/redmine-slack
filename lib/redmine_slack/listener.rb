@@ -8,6 +8,7 @@ class SlackListener < Redmine::Hook::Listener
 		if not channel
 			channel = channel_for_project issue.project
 		end
+
 		url = url_for_project issue.project
 
 		return unless (channel or issue_channel) and url
@@ -54,7 +55,7 @@ class SlackListener < Redmine::Hook::Listener
 		if not channel
 			channel = channel_for_project issue.project
 		end
-		issue_channel = channel_for_issue issue
+
 		url = url_for_project issue.project
 
 		return unless (channel or issue_channel) and url and Setting.plugin_redmine_slack['post_updates'] == '1'
