@@ -4,8 +4,10 @@ class SlackListener < Redmine::Hook::Listener
 	def redmine_slack_issues_new_after_save(context={})
 		issue = context[:issue]
 
-		channel = channel_for_project issue.project
-		issue_channel = channel_for_issue issue
+		channel = channel_for_issue issue
+		if not channel
+			channel = channel_for_project issue.project
+		end
 		url = url_for_project issue.project
 
 		return unless (channel or issue_channel) and url
@@ -48,7 +50,10 @@ class SlackListener < Redmine::Hook::Listener
 		issue = context[:issue]
 		journal = context[:journal]
 
-		channel = channel_for_project issue.project
+		channel = channel_for_issue issue
+		if not channel
+			channel = channel_for_project issue.project
+		end
 		issue_channel = channel_for_issue issue
 		url = url_for_project issue.project
 
@@ -76,11 +81,14 @@ class SlackListener < Redmine::Hook::Listener
 		journal = issue.current_journal
 		changeset = context[:changeset]
 
-		channel = channel_for_project issue.project
-		issue_channel = channel_for_issue issue
+		channel = channel_for_issue issue
+		if not channel
+			channel = channel_for_project issue.project
+		end
+
 		url = url_for_project issue.project
 
-		return unless (channel or issue_channel) and url and issue.save
+		return unless channel and url and issue.save
 		return if issue.is_private?
 
 		msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>"
