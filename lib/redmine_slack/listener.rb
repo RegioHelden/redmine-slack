@@ -11,7 +11,7 @@ class SlackListener < Redmine::Hook::Listener
 
 		url = url_for_project issue.project
 
-		return unless (channel or issue_channel) and url
+		return unless channel and url
 		return if issue.is_private?
 
 		msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
@@ -42,9 +42,6 @@ class SlackListener < Redmine::Hook::Listener
 		if channel
 			speak msg, channel, attachment, url
 		end
-		if issue_channel
-			speak msg, issue_channel, attachment, url
-		end
 	end
 
 	def redmine_slack_issues_edit_after_save(context={})
@@ -58,7 +55,7 @@ class SlackListener < Redmine::Hook::Listener
 
 		url = url_for_project issue.project
 
-		return unless (channel or issue_channel) and url and Setting.plugin_redmine_slack['post_updates'] == '1'
+		return unless channel and url and Setting.plugin_redmine_slack['post_updates'] == '1'
 		return if issue.is_private?
 		return if journal.private_notes?
 
@@ -71,9 +68,6 @@ class SlackListener < Redmine::Hook::Listener
 		# It's possible that the issue can report to a project-specific and issue-specific channel
 		if channel
 			speak msg, channel, attachment, url
-		end
-		if issue_channel
-			speak msg, issue_channel, attachment, url
 		end
 	end
 
@@ -128,9 +122,6 @@ class SlackListener < Redmine::Hook::Listener
 		# It's possible that the issue can report to a project-specific and issue-specific channel
 		if channel
 			speak msg, channel, attachment, url
-		end
-		if issue_channel
-			speak msg, issue_channel, attachment, url
 		end
 	end
 
